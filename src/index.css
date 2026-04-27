@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+:root {
+  --font-ui: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-reading: Charter, "Bitstream Charter", "Sitka Text", Cambria, "Times New Roman", serif;
+
+  /* LIGHT MODE (Default) */
+  /* Background: Pure White */
+  --universe-900: 255 255 255;      
+  
+  /* Surface: Very Light Gray (almost white) */
+  --universe-800: 249 250 251;      
+  
+  /* Border: Visible Gray */
+  --universe-700: 229 231 235;      
+  
+  /* Text: Pure Black */
+  --universe-foreground: 0 0 0;     
+  
+  /* Muted Text: Dark Gray/Black (Kept dark as requested) */
+  --universe-muted: 17 24 39;       /* #111827 */
+  
+  /* Highlight: Unified Purple (Same as Dark Mode) */
+  --universe-highlight: 163 113 247; /* #A371F7 - The vibrant purple */
+}
+
+.dark {
+  /* DARK MODE */
+  /* Background: Deep Dark Blue/Black */
+  --universe-900: 13 17 23;         
+  
+  /* Surface: Dark Blue/Gray */
+  --universe-800: 22 27 34;         
+  
+  /* Border: Dark Gray */
+  --universe-700: 48 54 61;         
+  
+  /* Text: Pure White */
+  --universe-foreground: 255 255 255; 
+  
+  /* Muted Text: Light Gray (Readable on dark) */
+  --universe-muted: 156 163 175;    /* #9CA3AF */
+  
+  /* Highlight: Bright Purple */
+  --universe-highlight: 163 113 247; /* #A371F7 */
+}
+
+html, body {
+  scrollbar-width: auto;
+  scrollbar-color: rgb(var(--universe-muted) / 0.7) rgb(var(--universe-800) / 0.5);
+  min-height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: rgb(var(--universe-900));
+  color: rgb(var(--universe-foreground));
+  font-family: var(--font-ui);
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-reading);
+  }
+
+  p {
+    font-family: var(--font-reading);
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  nav,
+  a,
+  span,
+  small,
+  strong,
+  em {
+    font-family: var(--font-ui);
+  }
+}
+
+body::-webkit-scrollbar {
+  width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+  background: rgb(var(--universe-800) / 0.5);
+}
+
+body::-webkit-scrollbar-thumb {
+  background: rgb(var(--universe-muted) / 0.7);
+  border-radius: 999px;
+}
+
+#root {
+  min-height: 100%;
+  width: 100%;
+}
