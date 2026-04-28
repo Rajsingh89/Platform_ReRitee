@@ -143,22 +143,39 @@ export const BlogDetail = () => {
     setSubmittingComment(false);
   };
 
+  // Render article content from database - NOT hardcoded
   const articleParagraphs = useMemo(() => {
     if (!currentPost) return [];
-    const base = [
-      `"${currentPost.subtitle || ''}"`,
-      "They make it look easy.",
-      "Almost too easy.",
-      "So instead of watching from the sidelines, I decided to test it myself.",
-      "I followed the exact framework with no shortcuts and no skipped steps.",
-      "Here is what happened.",
-      "Day 1: The plan looked perfect.",
-      "Day 2: Setting everything up took longer than expected.",
-      "Day 3: Small mistakes started costing time and confidence.",
-      "Day 4: After fixing the process, results finally started to move.",
-      "The method works, but only when execution is clean and consistent.",
+    
+    // Try to get content from the post - handle both string and object formats
+    const rawContent = currentPost.content;
+    let contentText = '';
+    
+    if (typeof rawContent === 'string') {
+      contentText = rawContent;
+    } else if (Array.isArray(rawContent)) {
+      // Handle array of content blocks
+      contentText = rawContent.map((block: any) => block.content || '').filter(Boolean).join('\n\n');
+    } else if (rawContent && typeof rawContent === 'object') {
+      // Handle object format - try common fields
+      contentText = rawContent.body || rawContent.text || rawContent.content || '';
+    }
+    
+    // Split content into paragraphs
+    if (contentText) {
+      return contentText.split('\n\n').filter(p => p.trim());
+    }
+    
+    // Fallback to subtitle if no content
+    if (currentPost.subtitle) {
+      return [currentPost.subtitle, 'Click the button above to read the full article when the author publishes the complete content.'];
+    }
+    
+    // No content available
+    return [
+      'This article is waiting for the author to publish its content.',
+      'The title suggests there is more to come - check back later!',
     ];
-    return base;
   }, [currentPost]);
 
   const moreFromAuthor = posts.filter((item) => item.author_id === currentPost?.author_id && item.id !== id).slice(0, 4);

@@ -11,6 +11,7 @@ import {
 import { AppSidebar } from "../components/layout/AppSidebar";
 import { ThemeToggle } from "../components/ui/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const SETTINGS_TABS = [
   "Account",
@@ -117,15 +118,40 @@ export const Settings = () => {
     }
   };
 
-  const handleDeactivateAccount = () => {
+  const handleDeactivateAccount = async () => {
     if (window.confirm("Deactivate account? You can reactivate by signing in again.")) {
-      alert("Your account is marked for deactivation.");
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_active: false })
+          .eq('id', user?.id);
+        
+        if (error) throw error;
+        alert("Your account has been deactivated.");
+      } catch (err: any) {
+        alert("Error: " + err.message);
+      }
     }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (window.confirm("Delete account permanently? This action cannot be undone.")) {
-      alert("Account deletion request submitted.");
+      try {
+        // Delete from profiles
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', user?.id);
+        
+        if (profileError) throw profileError;
+        
+        // Sign out
+        await supabase.auth.signOut();
+        
+        navigate('/');
+      } catch (err: any) {
+        alert("Error: " + err.message);
+      }
     }
   };
 

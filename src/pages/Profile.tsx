@@ -59,7 +59,7 @@ export const Profile = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      alert(`Searching for: ${searchQuery}`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
