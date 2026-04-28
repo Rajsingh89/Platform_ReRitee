@@ -69,37 +69,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadPosts = useCallback(async () => {
     setLoadingPosts(true)
     try {
-      const { data, error } = await supabase
+      // Get posts first
+      const { data } = await supabase
         .from('posts')
         .select('*')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
+        .limit(20)
       
-      if (error) {
-        console.error('Error loading posts:', error)
-        setPosts([])
-        setLoadingPosts(false)
-        return
+      if (!data || data.length === 0) {
+        setPosts([]);
+        setLoadingPosts(false);
+        return;
       }
       
-      const postsWithAuthors = await Promise.all((data || []).map(async (post) => {
-        if (post.author_id) {
-          const { data: author } = await supabase
-            .from('profiles')
-            .select('id, username, full_name, avatar_url')
-            .eq('id', post.author_id)
-            .single()
-          return { ...post, author }
-        }
-        return { ...post, author: null }
-      }))
+      // Get unique author IDs
+      const authorIds = [...new Set(data.map(p => p.author_id).filter(Boolean))];
       
-      setPosts(postsWithAuthors)
-    } catch (err) {
-      console.error('Error loading posts:', err)
-      setPosts([])
+      if (authorIds.length === 0) {
+        setPosts(data.map(p => ({ ...p, author: null })));
+        setLoadingPosts(false);
+        return;
+      }
+      
+      // Batch fetch all authors at once
+      const { data: authors } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url')
+        .in('id', authorIds)
+      
+      // Create author map
+      const authorMap = new Map((authors || []).map(a => [a.id, a]));
+      
+      // Attach authors to posts
+      const postsWithAuthors = data.map(post => ({
+        ...post,
+        author: authorMap.get(post.author_id) || null
+      }));
+      
+      setPosts(postsWithAuthors);
+    } catch {
+      setPosts([]);
     } finally {
-      setLoadingPosts(false)
+      setLoadingPosts(false);
     }
   }, [])
 

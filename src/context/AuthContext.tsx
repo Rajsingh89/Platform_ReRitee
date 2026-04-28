@@ -22,29 +22,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      console.log('Fetching profile for:', userId);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
-      
-      if (error) {
-        console.log('Profile not found in DB (normal for new users):', error.message);
-        setProfile(null);
-      } else {
-        console.log('Profile found:', data?.username);
-        setProfile(data);
-      }
-    } catch (err) {
-      console.log('Profile fetch exception:', err);
+      setProfile(data);
+    } catch {
       setProfile(null);
     }
-  }
-
-  // Separate loading state handler - ensures we never get stuck in loading
-  const finishLoading = () => {
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -52,12 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const initAuth = async () => {
       try {
-        console.log('Initializing auth...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.log('Auth session error:', error.message);
-        }
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (mounted && session?.user) {
           setSession(session);
@@ -65,30 +46,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await fetchProfile(session.user.id);
         }
       } catch (err) {
-        console.log('Auth init error:', err);
+        // Ignore auth errors
       } finally {
-        if (mounted) {
-          console.log('Auth init complete');
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     }
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
         
-        console.log('Auth event:', event);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          await fetchProfile(session.user.id);
-          setLoading(false);
-        } else if (event === 'SIGNED_OUT') {
-          setProfile(null);
+          fetchProfile(session.user.id).finally(() => setLoading(false));
+        } else {
           setLoading(false);
         }
       }
