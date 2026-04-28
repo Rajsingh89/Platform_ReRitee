@@ -10,19 +10,21 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
-// Mock data for users you are ALREADY following
+// Mock data for users you are ALREADY following (fallback if no DB data)
 const YOUR_FOLLOWING = [
-  { id: 1, name: "Activated Thinker", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80" },
-  { id: 2, name: "Startup Stash", avatar: "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=150&q=80" },
-  { id: 3, name: "Zack Liu", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" },
-  { id: 4, name: "Andy Murphy", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" },
-  { id: 5, name: "The Geopolitical Economist", avatar: "https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=150&q=80" },
-  { id: 6, name: "Ken McMullen", avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150&q=80" },
-  { id: 7, name: "Emma. T", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" },
-  { id: 8, name: "Invisible Illness", avatar: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=150&q=80" },
-  { id: 9, name: "Stackademic", avatar: "https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=150&q=80" },
-  { id: 10, name: "Predict", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80" },
+  { id: "1", name: "Activated Thinker", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80" },
+  { id: "2", name: "Startup Stash", avatar: "https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&w=150&q=80" },
+  { id: "3", name: "Zack Liu", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80" },
+  { id: "4", name: "Andy Murphy", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" },
+  { id: "5", name: "The Geopolitical Economist", avatar: "https://images.unsplash.com/photo-1552058544-f2b08422138a?auto=format&fit=crop&w=150&q=80" },
+  { id: "6", name: "Ken McMullen", avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=150&q=80" },
+  { id: "7", name: "Emma. T", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80" },
+  { id: "8", name: "Invisible Illness", avatar: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=150&q=80" },
+  { id: "9", name: "Stackademic", avatar: "https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=150&q=80" },
+  { id: "10", name: "Predict", avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80" },
 ];
 
 interface AppSidebarProps {
@@ -35,9 +37,61 @@ interface AppSidebarProps {
 
 export const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen, isFixed = false }: AppSidebarProps) => {
   const location = useLocation();
+  const { user } = useAuth();
+  const [followingUsers, setFollowingUsers] = useState<{ id: string; name: string; avatar: string }[]>([]);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [visibleFollowingCount, setVisibleFollowingCount] = useState(8);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const fetchedRef = useRef(false);
+
+  // Fetch following users from Supabase (only once, only if logged in)
+  useEffect(() => {
+    if (!user || fetchedRef.current) return;
+    
+    const fetchFollowing = async () => {
+      fetchedRef.current = true;
+      setLoadingFollowing(true);
+      
+      try {
+        const { data, error } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id)
+          .limit(20)
+        
+        if (error) {
+          console.error('Error fetching following:', error)
+          fetchedRef.current = false;
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          const userIds = data.map(f => f.following_id);
+          
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', userIds)
+          
+          if (profiles) {
+            setFollowingUsers(profiles.map(p => ({
+              id: p.id,
+              name: p.username || 'Unknown',
+              avatar: p.avatar_url || ''
+            })));
+          }
+        }
+      } catch (err) {
+        console.error('Error in following fetch:', err);
+        fetchedRef.current = false;
+      } finally {
+        setLoadingFollowing(false);
+      }
+    }
+    
+    fetchFollowing()
+  }, [user])
 
   // Handle responsive state
   useEffect(() => {
@@ -62,12 +116,14 @@ export const AppSidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMob
     { icon: Activity, label: "Stats", path: "/stats" },
   ];
 
-  const sidebarWidth = isCollapsed ? "w-0 border-none" : "w-60";
-  const hasMoreFollowing = visibleFollowingCount < YOUR_FOLLOWING.length;
-  const visibleFollowing = YOUR_FOLLOWING.slice(0, visibleFollowingCount);
+  // Use DB data if available, otherwise fallback to mock data
+  const displayFollowing = followingUsers.length > 0 ? followingUsers : YOUR_FOLLOWING.slice(0, 8);
+const sidebarWidth = isCollapsed ? "w-0 border-none" : "w-60";
+  const visibleFollowing = displayFollowing.slice(0, visibleFollowingCount);
+  const hasMoreFollowing = visibleFollowingCount < displayFollowing.length;
 
-  const handleShowMoreFollowing = () => {
-    setVisibleFollowingCount(YOUR_FOLLOWING.length);
+const handleShowMoreFollowing = () => {
+    setVisibleFollowingCount(displayFollowing.length);
   };
   
   return (

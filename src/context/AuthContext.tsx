@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -29,50 +30,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
       
       if (error) {
-        console.error('Error fetching profile:', error)
-        setProfile(null)
+        console.log('Profile not found in DB (normal for new users):', error.message);
+        setProfile(null);
       } else {
-        setProfile(data)
+        console.log('Profile found:', data?.username);
+        setProfile(data);
       }
     } catch (err) {
-      console.error('Error fetching profile:', err)
-      setProfile(null)
+      console.log('Profile fetch exception:', err);
+      setProfile(null);
     }
   }
 
+  // Separate loading state handler - ensures we never get stuck in loading
+  const finishLoading = () => {
+    setLoading(false);
+  }
+
   useEffect(() => {
+    let mounted = true;
+    
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        console.log('Initializing auth...');
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (session?.user) {
-          setSession(session)
-          setUser(session.user)
-          await fetchProfile(session.user.id)
+        if (error) {
+          console.log('Auth session error:', error.message);
+        }
+        
+        if (mounted && session?.user) {
+          setSession(session);
+          setUser(session.user);
+          await fetchProfile(session.user.id);
         }
       } catch (err) {
-        console.error('Auth init error:', err)
+        console.log('Auth init error:', err);
       } finally {
-        setLoading(false)
+        if (mounted) {
+          console.log('Auth init complete');
+          setLoading(false);
+        }
       }
     }
 
-    initAuth()
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
+        if (!mounted) return;
+        
+        console.log('Auth event:', event);
+        setSession(session);
+        setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          await fetchProfile(session.user.id)
+          await fetchProfile(session.user.id);
+          setLoading(false);
         } else if (event === 'SIGNED_OUT') {
-          setProfile(null)
+          setProfile(null);
+          setLoading(false);
         }
       }
-    )
+    );
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [])
 
   const signOut = async () => {
