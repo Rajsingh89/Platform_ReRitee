@@ -37,10 +37,16 @@ export const Login = ({ initialMode = "login" }: LoginProps) => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError("");
+    
+    // Get current origin - works on both localhost and deployed domain
+    const currentOrigin = window.location.origin;
+    const redirectUrl = `${currentOrigin}/auth/callback`;
+    console.log('OAuth redirect to:', redirectUrl);
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + '/auth/callback'
+        redirectTo: redirectUrl
       }
     });
     if (error) {
